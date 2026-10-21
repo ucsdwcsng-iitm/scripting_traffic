@@ -1,0 +1,23 @@
+**/__pycache__/
+**/*.py[cod]
+
+# Captures, trained models and experiment results (local only).
+ue_power_estimation/data/
+ue_power_estimation/models/
+ue_power_estimation/results/
+
+# Capture-time runtime output.
+testbed/runs/
+synthetic_traffic/schedules/
+
+# Regenerated paper figures.
+make_deliverables/figures/
+
+.vscode/
+
+# Private/local material that must never be committed.
+/id_ed25519
+/id_ed25519.pub
+docs/
+System Model.pdf
+*.pptx

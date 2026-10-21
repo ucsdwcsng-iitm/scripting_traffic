@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NS="ue-browser"
+# Desktop user that owns the X session Chrome is shown on (set by ue-chrome.service).
+USER_NAME="${UE_CHROME_USER:?UE_CHROME_USER is not set}"
+USER_ID="$(/usr/bin/id -u "${USER_NAME}")"
+USER_HOME="$(/usr/bin/getent passwd "${USER_NAME}" | /usr/bin/cut -d: -f6)"
+PROFILE_DIR="${UE_CHROME_PROFILE_DIR:-${USER_HOME}/.local/share/ue-chrome-profile}"
+# Resting page for the initial window. Deliberately about:blank, not a real
+# site: the activity driver (and the YouTube path) open their own CDP target for
+# the chosen app, so a content URL here would just load an unrelated page (e.g.
+# YouTube) into the capture regardless of which activity was selected.
+URL="${1:-about:blank}"
+
+set +o pipefail
+XAUTH="$(/usr/bin/pgrep -u "${USER_NAME}" -a Xwayland \
+  | /usr/bin/awk '{for (i = 1; i < NF; i++) if ($i == "-auth") {print $(i+1); exit}}')"
+
+if [[ -z "${XAUTH}" ]]; then
+  XAUTH="$(/usr/bin/find "/run/user/${USER_ID}" -maxdepth 1 -name '.mutter-Xwaylandauth.*' -type f -printf '%T@ %p\n' 2>/dev/null \
+    | /usr/bin/sort -nr \
+    | /usr/bin/awk 'NR == 1 {print $2}')"
+fi
+set -o pipefail
+
+if [[ -z "${XAUTH}" || ! -r "${XAUTH}" ]]; then
+  echo "Could not find readable Xwayland auth file for ${USER_NAME}" >&2
+  exit 1
+fi
+
+if ! /usr/sbin/ip netns list | /usr/bin/grep -qE "^${NS}"'([[:space:]]|$)'; then
+  echo "Network namespace ${NS} is missing" >&2
+  exit 1
+fi
+
+/usr/bin/install -d -o "${USER_NAME}" -g "${USER_NAME}" -m 0700 "${PROFILE_DIR}"
+/usr/bin/chown -R "${USER_NAME}:${USER_NAME}" "${PROFILE_DIR}"
+rm -f "${PROFILE_DIR}/SingletonCookie" \
+      "${PROFILE_DIR}/SingletonLock" \
+      "${PROFILE_DIR}/SingletonSocket"
+
+/usr/sbin/ip netns exec "${NS}" /usr/sbin/sysctl -w \
+  net.ipv6.conf.all.disable_ipv6=1 \
+  net.ipv6.conf.default.disable_ipv6=1 >/dev/null || true
+
+if /usr/sbin/ip netns exec "${NS}" test -d /sys/class/net/wwan0; then
+  /usr/sbin/ip netns exec "${NS}" /usr/sbin/sysctl -w \
+    net.ipv6.conf.wwan0.disable_ipv6=1 >/dev/null || true
+fi
+
+exec /usr/sbin/ip netns exec "${NS}" /usr/sbin/runuser -u "${USER_NAME}" -- env \
+  DISPLAY=:0 \
+  XAUTHORITY="${XAUTH}" \
+  DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus" \
+  XDG_RUNTIME_DIR="/run/user/${USER_ID}" \
+  HOME="${USER_HOME}" \
+  NO_AT_BRIDGE=1 \
+  /usr/bin/google-chrome \
+    --user-data-dir="${PROFILE_DIR}" \
+    --new-window "${URL}" \
+    --no-first-run \
+    --ozone-platform=x11 \
+    --disable-gpu \
+    --disable-dev-shm-usage \
+    --disable-async-dns \
+    --dns-prefetch-disable \
+    --disable-quic \
+    --disable-ipv6 \
+    --no-proxy-server \
+    --remote-debugging-address=127.0.0.1 \
+    --remote-debugging-port=9223 \
+    --keep-alive-for-test \
+    --no-sandbox

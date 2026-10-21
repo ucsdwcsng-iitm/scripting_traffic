@@ -1,0 +1,5 @@
+extends: _base.yaml
+experiment:
+  id: synthetic_to_slither
+data:
+  test: {capture_id: chrome/slither_20260625_142022_60s, start_s: 50, end_s: 60}

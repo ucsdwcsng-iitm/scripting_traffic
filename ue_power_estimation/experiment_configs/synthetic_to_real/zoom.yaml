@@ -1,0 +1,5 @@
+extends: _base.yaml
+experiment:
+  id: synthetic_to_zoom
+data:
+  test: {capture_id: chrome/zoom_20260628_140428_60s, start_s: 50, end_s: 60}

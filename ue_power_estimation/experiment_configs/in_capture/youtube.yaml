@@ -1,0 +1,8 @@
+extends: _base.yaml
+experiment:
+  id: in_capture_youtube
+data:
+  device: qualcomm
+  train:      {capture_id: chrome/youtube_20260624_165416_60s, start_s: 0,  end_s: 40}
+  validation: {capture_id: chrome/youtube_20260624_165416_60s, start_s: 40, end_s: 50}
+  test:       {capture_id: chrome/youtube_20260624_165416_60s, start_s: 50, end_s: 60}

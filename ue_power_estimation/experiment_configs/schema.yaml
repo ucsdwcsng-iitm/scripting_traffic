@@ -1,0 +1,83 @@
+schema_version: 1
+description: Validation contract for one offline power-estimation experiment.
+required:
+  - schema_version
+  - experiment
+  - data
+  - pipelines
+  - model
+sections:
+  experiment:
+    required: [id]
+    fields:
+      id: stable experiment-family identifier
+      variant_id: stable variant identifier; defaults to default
+      description: human-readable purpose
+      tags: optional list of labels
+  data:
+    required: [train, validation, test]
+    fields:
+      device: qualcomm or pixel
+      train: {capture_id: string, start_s: number, end_s: number}
+      validation: {capture_id: string, start_s: number, end_s: number}
+      test: >-
+        a {capture_id, start_s, end_s} mapping, OR a list of such mappings to
+        evaluate several test slices of one capture in a single run. A list must
+        share one capture_id; each slice writes its own
+        srsran_eval_<start>s_to_<end>s/ result folder. A single mapping keeps the
+        legacy bare srsran_eval/ folder.
+      train_pool: >-
+        optional list of capture_id strings. When present, the srsRAN model is
+        trained on the pooled features of these captures (instead of the single
+        data.train capture) and evaluated frozen on data.test. data.train/
+        validation remain required and act only as a window stub.
+  pipelines:
+    fields:
+      srsran: boolean
+      3gpp: boolean
+  preprocessing:
+    fields:
+      offset_search_ms: number
+      offset_step_ms: number
+      feature_profile: string
+      microsleep_power_mw: number  # 3GPP micro-sleep baseline power floor (mW), default 250
+  model:
+    required: [name, source]
+    fields:
+      id: optional stable model identifier
+      name: xgboost
+      source: srsran
+      params: mapping
+      other: mapping
+  link_config:
+    description: Expected capture conditions, validated against metadata.json.
+  evaluation:
+    description: Metrics and plots requested for the run.
+  retention:
+    description: Durable prediction and diagnostic artifact policy.
+  validation:
+    fields:
+      require_link_match: boolean
+      allow_split_overlap: boolean
+  feature_ablation:
+    description: >-
+      Optional feature-family ablation for the srsRAN XGBoost build. Each include_*
+      flag switches one feature family on or off; omitted flags default to true
+      (kept), so a block only names what it drops. Absent block keeps every family
+      (identical to the legacy build). Use one scheme per experiment.variant_id so
+      results/models land at <experiment_id>/<scheme_id>/<capture>. Folded into the
+      model train_hash. Not supported together with data.train_pool (pooled
+      training builds features via a separate cached path).
+    fields:
+      scheme_id: stable scheme/variant label; defaults to full_features
+      include_temporal_bases: boolean  # current-slot raw PHY base values; default true
+      include_temporal_aggregates: boolean  # derived lag__*/roll__* columns; default true
+      include_categorical: boolean  # one-hot categorical features; default true
+      include_rule_based_context: boolean  # rule_based_* columns used as features; default true
+inheritance:
+  field: extends
+  semantics:
+    mappings: deep merge
+    lists: replace
+    scalars: replace
+    path_resolution: relative to child configuration

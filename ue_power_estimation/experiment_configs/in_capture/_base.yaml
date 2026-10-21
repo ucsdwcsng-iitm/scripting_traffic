@@ -1,0 +1,47 @@
+# Paper Sec. 5.1 / Table 3 / Fig. 5: per-capture accuracy. Train on 0-40 s,
+# validate on 40-50 s, test on the final 10 s of one 60 s real-app capture.
+# Per-app files extend this and set experiment.id + data.
+schema_version: 1
+pipelines:
+  srsran: true
+  3gpp: true
+preprocessing:
+  feature_profile: default_causal
+  offset_search_ms: 250
+  offset_step_ms: 1
+  # TR 38.840 micro-sleep power (mW) that the measured power floor maps to.
+  microsleep_power_mw: 420
+model:
+  name: xgboost
+  source: srsran
+  params:
+    objective: reg:squarederror
+    n_estimators: 1500
+    learning_rate: 0.03
+    max_depth: 7
+    min_child_weight: 2
+    subsample: 0.9
+    colsample_bytree: 0.8
+    reg_lambda: 2.0
+    tree_method: hist
+    random_state: 42
+    early_stopping_rounds: 100
+  other:
+    # false: predict absolute power from gNB features only (no 3GPP input).
+    # true: predict the residual over the affine-calibrated TR 38.840 estimate,
+    #       with the raw and calibrated TR 38.840 traces as extra inputs (Eq. 3).
+    residual_learning: false
+validation:
+  require_link_match: false
+evaluation:
+  metrics: [mae_mw, rmse_mw, mape_pct, energy_error_pct]
+  plots: [holdout, residuals, model_comparison]
+retention:
+  predictions: true
+  feature_matrices: processed_data
+feature_ablation:
+  scheme_id: full_no_3gpp
+  include_temporal_bases: true
+  include_temporal_aggregates: true
+  include_categorical: true
+  include_rule_based_context: false

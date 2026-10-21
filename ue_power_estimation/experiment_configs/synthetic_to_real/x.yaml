@@ -1,0 +1,5 @@
+extends: _base.yaml
+experiment:
+  id: synthetic_to_x
+data:
+  test: {capture_id: chrome/x_20260625_134225_60s, start_s: 50, end_s: 60}

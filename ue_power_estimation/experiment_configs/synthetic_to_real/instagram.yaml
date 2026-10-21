@@ -1,0 +1,5 @@
+extends: _base.yaml
+experiment:
+  id: synthetic_to_instagram
+data:
+  test: {capture_id: chrome/instagram_20260625_140847_60s, start_s: 50, end_s: 60}

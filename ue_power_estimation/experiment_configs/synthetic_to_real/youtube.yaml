@@ -1,0 +1,5 @@
+extends: _base.yaml
+experiment:
+  id: synthetic_to_youtube
+data:
+  test: {capture_id: chrome/youtube_20260624_165416_60s, start_s: 50, end_s: 60}
